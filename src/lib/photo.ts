@@ -6,6 +6,9 @@ import { randomUUID } from "node:crypto";
 const ALLOWED = ["image/jpeg", "image/png"];
 const MAX_BYTES = 4 * 1024 * 1024;
 
+/** Vercel Blob: token clássico ou OIDC + BLOB_STORE_ID (lojas novas). */
+const blobConfigured = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
+
 /** Verifica a assinatura real do ficheiro (não confiar no mime type enviado). */
 function sniff(buf: Buffer): "jpg" | "png" | null {
   if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "jpg";
@@ -22,12 +25,12 @@ export async function storePhoto(file: Blob): Promise<string> {
   const name = `photo-${randomUUID()}.${ext}`;
   const contentType = ext === "jpg" ? "image/jpeg" : "image/png";
 
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
+  if (blobConfigured()) {
     const { put } = await import("@vercel/blob");
     const blob = await put(`cv/${name}`, buf, { access: "public", contentType });
     return blob.url;
   }
-  if (process.env.VERCEL) throw new Error("BLOB_READ_WRITE_TOKEN não está definido. Liga o Vercel Blob ao projeto.");
+  if (process.env.VERCEL) throw new Error("Vercel Blob não configurado: falta BLOB_STORE_ID (ou BLOB_READ_WRITE_TOKEN). Liga o Blob ao projeto.");
 
   const dir = path.join(process.cwd(), "public", "uploads");
   await fs.mkdir(dir, { recursive: true });
@@ -38,7 +41,7 @@ export async function storePhoto(file: Blob): Promise<string> {
 export async function deletePhoto(url: string) {
   if (!url) return;
   try {
-    if (url.startsWith("https://") && process.env.BLOB_READ_WRITE_TOKEN) {
+    if (url.startsWith("https://") && blobConfigured()) {
       const { del } = await import("@vercel/blob");
       await del(url);
     } else if (/^\/uploads\/photo-[\w-]+\.(jpg|png)$/.test(url)) {
