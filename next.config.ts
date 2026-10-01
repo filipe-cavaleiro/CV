@@ -20,7 +20,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ["@react-pdf/renderer"],
   outputFileTracingIncludes: {
-    "/api/admin/pdf": ["./src/pdf/fonts/**/*"],
+    // O pdfkit carrega estes ficheiros dinamicamente, por isso o tracing não os apanha sozinho.
+    "/api/admin/pdf": ["./src/pdf/fonts/**/*", "./node_modules/pdfkit/js/standard-fonts/**/*", "./node_modules/pdfkit/js/data/**/*"],
   },
   experimental: {
     serverActions: { bodySizeLimit: "5mb" },
